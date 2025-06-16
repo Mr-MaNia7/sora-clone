@@ -71,29 +71,13 @@
 
    For more details on Google Vertex AI configuration, see the [AI SDK documentation](https://sdk.vercel.ai/providers/ai-sdk-providers/google-vertex#edge-runtime).
 
-3. **Set up environment variables:**
-   Create an `.env.local` file in the root of the project and add your AI provider API keys. At a minimum, you will need to set up Google Vertex AI to use the image generation features.
-
-   **For Google Vertex AI (Required for Generation):**
-
-   - Install the Google Cloud CLI by following the official [installation guide](https://cloud.google.com/sdk/docs/install).
-   - Authenticate your local environment by running:
-     ```bash
-     gcloud auth application-default login
-     ```
-   - In your `.env.local` file, add your project details:
-     ```
-     GOOGLE_VERTEX_PROJECT=...      # Your Google Cloud project ID
-     GOOGLE_VERTEX_LOCATION=...     # e.g., "us-central1"
-     ```
-
-4. **Run the development server:**
+3. **Run the development server:**
 
    ```bash
    pnpm dev
    ```
 
-5. **Open the application:**
+4. **Open the application:**
    Open [http://localhost:3000](http://localhost:3000) in your browser to view the application.
 
 ## 📄 Project Task
