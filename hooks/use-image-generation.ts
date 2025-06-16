@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { ImageError, ImageResult, ProviderTiming } from "@/lib/image-types";
 import { initializeProviderRecord, ProviderKey } from "@/lib/provider-config";
-
-type AspectRatio = "1:1" | "16:9" | "9:16";
+import { AspectRatio } from "@/lib/api-types";
 
 interface UseImageGenerationReturn {
   images: ImageResult[];
@@ -18,6 +17,7 @@ interface UseImageGenerationReturn {
   ) => Promise<void>;
   resetState: () => void;
   activePrompt: string;
+  generationAspectRatio: AspectRatio;
 }
 
 export function useImageGeneration(): UseImageGenerationReturn {
@@ -29,6 +29,8 @@ export function useImageGeneration(): UseImageGenerationReturn {
   const [failedProviders, setFailedProviders] = useState<ProviderKey[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activePrompt, setActivePrompt] = useState("");
+  const [generationAspectRatio, setGenerationAspectRatio] =
+    useState<AspectRatio>("1:1");
 
   const resetState = () => {
     setImages([]);
@@ -36,6 +38,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
     setTimings(initializeProviderRecord<ProviderTiming>());
     setFailedProviders([]);
     setIsLoading(false);
+    setGenerationAspectRatio("1:1");
   };
 
   const startGeneration = async (
@@ -45,6 +48,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
     aspectRatio: AspectRatio
   ) => {
     setActivePrompt(prompt);
+    setGenerationAspectRatio(aspectRatio);
     try {
       setIsLoading(true);
       // Initialize images array with null values
@@ -165,5 +169,6 @@ export function useImageGeneration(): UseImageGenerationReturn {
     startGeneration,
     resetState,
     activePrompt,
+    generationAspectRatio,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { MediaItem, AspectRatio } from "@/lib/mock-data";
+import { MediaItem, AspectRatio } from "@/lib/api-types";
 import Image from "next/image";
 import {
   X,

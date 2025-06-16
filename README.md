@@ -39,21 +39,37 @@
 
 ## 🚀 Local Setup
 
-To run this project locally, follow these steps:
+## Running Locally
 
-1. **Clone the repository:**
-
-   ```bash
-   git clone <your-repository-url>
-   cd <repository-name>
-   ```
-
-2. **Install dependencies:**
-   This project uses `pnpm` for package management.
+1. Clone the repository and install dependencies:
 
    ```bash
    pnpm install
    ```
+
+2. Create an `.env.local` file to store any necessary API keys for the providers you plan to use. There is an `.env.example` file that you can use as a reference.
+
+   ```
+   # Standard API keys
+   OPENAI_API_KEY=...
+   REPLICATE_API_TOKEN=...
+   FIREWORKS_API_KEY=...
+
+   # Google Vertex AI settings
+   GOOGLE_CLIENT_EMAIL=...        # From your service account JSON file
+   GOOGLE_PRIVATE_KEY=...         # From your service account JSON file
+   GOOGLE_VERTEX_PROJECT=...      # Your Google Cloud project ID
+   GOOGLE_VERTEX_LOCATION=...     # e.g., "us-central1"
+   ```
+
+   For Google Vertex AI setup:
+
+   - Get your service account credentials from the Google Cloud Console
+   - The values for `GOOGLE_CLIENT_EMAIL` and `GOOGLE_PRIVATE_KEY` can be found in your service account JSON file
+   - Set `GOOGLE_VERTEX_LOCATION` to your preferred region (e.g., "us-central1")
+   - Set `GOOGLE_VERTEX_PROJECT` to your Google Cloud project ID
+
+   For more details on Google Vertex AI configuration, see the [AI SDK documentation](https://sdk.vercel.ai/providers/ai-sdk-providers/google-vertex#edge-runtime).
 
 3. **Set up environment variables:**
    Create an `.env.local` file in the root of the project and add your AI provider API keys. At a minimum, you will need to set up Google Vertex AI to use the image generation features.

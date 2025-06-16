@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed": "node -r @swc-node/register scripts/seed-data.ts"
   },
   "dependencies": {
     "@ai-sdk/fireworks": "^0.1.0",
@@ -38,6 +39,7 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@swc-node/register": "^1.10.10",
     "@types/node": "^22.10.7",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { AspectRatio } from "@/lib/mock-data";
+import { AspectRatio } from "@/lib/api-types";
 import { motion } from "framer-motion";
 
 interface SkeletonCardProps {
@@ -27,3 +27,4 @@ export function SkeletonCard({ aspectRatio }: SkeletonCardProps) {
     />
   );
 }
+ 

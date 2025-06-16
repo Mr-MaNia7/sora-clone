@@ -12,8 +12,8 @@ import {
   ProviderKey,
 } from "@/lib/provider-config";
 import { MediaCard } from "./MediaCard";
-import { mockMedia, MediaItem, AspectRatio } from "@/lib/mock-data";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { MediaItem, AspectRatio } from "@/lib/api-types";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { SkeletonCard } from "./SkeletonCard";
 import { motion } from "framer-motion";
@@ -25,12 +25,11 @@ interface FetchMediaResponse {
 
 const fetchMedia = async ({ pageParam = 0 }: { pageParam: number }): Promise<FetchMediaResponse> => {
   const pageSize = 8;
-  await new Promise(res => setTimeout(res, 500)); // Simulate network delay
-  const data = mockMedia.slice(pageParam * pageSize, (pageParam + 1) * pageSize);
-  return {
-    data,
-    nextPage: data.length === pageSize ? pageParam + 1 : undefined,
-  };
+  const response = await fetch(`/api/media?page=${pageParam}&pageSize=${pageSize}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch media');
+  }
+  return response.json();
 };
 
 export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
@@ -39,10 +38,11 @@ export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
     isLoading: isGenerating,
     startGeneration,
     activePrompt,
+    generationAspectRatio,
   } = useSharedImageGeneration();
   
   const router = useRouter();
-  const [newlyGeneratedItems, setNewlyGeneratedItems] = useState<MediaItem[]>([]);
+  const queryClient = useQueryClient();
   const [viewAspectRatio, setViewAspectRatio] = useState<AspectRatio | "all">("all");
   const masonryRef = useRef<HTMLDivElement>(null);
   
@@ -52,6 +52,7 @@ export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
     hasNextPage,
     isFetchingNextPage,
     isPending: isInitialLoading,
+    refetch,
   } = useInfiniteQuery({
     queryKey: ["media"],
     queryFn: fetchMedia,
@@ -115,22 +116,10 @@ export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
   }, []);
 
   useEffect(() => {
-    if (generatedImages.length > 0) {
-      const newMedia = generatedImages
-        .filter((img) => img.image)
-        .map((img, index) => ({
-          id: Date.now() + index,
-          src: img.image!,
-          alt: activePrompt || "Generated image",
-          author: img.provider,
-          likes: 0,
-          type: "image" as const,
-          aspectRatio: "1:1" as AspectRatio, // Placeholder, will be dynamic
-          prompt: activePrompt,
-        }));
-      setNewlyGeneratedItems((prev) => [...newMedia, ...prev]);
+    if (generatedImages.length > 0 && !isGenerating) {
+      queryClient.invalidateQueries({ queryKey: ['media'] });
     }
-  }, [generatedImages, activePrompt]);
+  }, [generatedImages, isGenerating, queryClient]);
 
   const [selectedModels, setSelectedModels] = useState<
     Record<ProviderKey, string>
@@ -150,11 +139,10 @@ export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
   };
   
   const allMediaItems = data?.pages.flatMap(page => page.data) ?? [];
-  const combinedMedia = [...newlyGeneratedItems, ...allMediaItems];
 
-  const filteredMediaItems = viewAspectRatio === 'all' 
-    ? combinedMedia 
-    : combinedMedia.filter(item => item.aspectRatio === viewAspectRatio);
+  const filteredMediaItems = viewAspectRatio === 'all'
+    ? allMediaItems
+    : allMediaItems.filter(item => item.aspectRatio === viewAspectRatio);
 
   // Layout masonry when items change or window resizes
   useEffect(() => {

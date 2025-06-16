@@ -5,7 +5,10 @@ import { fireworks } from "@ai-sdk/fireworks";
 import { replicate } from "@ai-sdk/replicate";
 import { vertex } from "@ai-sdk/google-vertex/edge";
 import { ProviderKey } from "@/lib/provider-config";
-import { GenerateImageRequest } from "@/lib/api-types";
+import { GenerateImageRequest, AspectRatio } from "@/lib/api-types";
+import { MediaItem } from "@/lib/api-types";
+import fs from "fs/promises";
+import path from "path";
 
 /**
  * Intended to be slightly less than the maximum execution time allowed by the
@@ -54,7 +57,7 @@ const withTimeout = <T>(
 
 export async function POST(req: NextRequest) {
   const requestId = Math.random().toString(36).substring(7);
-  const { prompt, provider, modelId } =
+  const { prompt, provider, modelId, aspectRatio } =
     (await req.json()) as GenerateImageRequest;
 
   try {
@@ -71,7 +74,7 @@ export async function POST(req: NextRequest) {
       prompt,
       ...(config.dimensionFormat === "size"
         ? { size: DEFAULT_IMAGE_SIZE }
-        : { aspectRatio: DEFAULT_ASPECT_RATIO }),
+        : { aspectRatio: aspectRatio ?? DEFAULT_ASPECT_RATIO }),
       ...(provider !== "openai" && {
         seed: Math.floor(Math.random() * 1000000),
       }),
@@ -98,6 +101,27 @@ export async function POST(req: NextRequest) {
     });
 
     const result = await withTimeout(generatePromise, TIMEOUT_MILLIS);
+
+    if ("image" in result && result.image) {
+      const mediaFilePath = path.join(process.cwd(), "data", "media.json");
+      const mediaData = await fs.readFile(mediaFilePath, "utf-8");
+      const mediaItems: MediaItem[] = JSON.parse(mediaData);
+
+      const newMediaItem: MediaItem = {
+        id: Date.now(),
+        src: `data:image/png;base64,${result.image}`,
+        alt: prompt,
+        author: provider,
+        likes: 0,
+        type: "image",
+        aspectRatio: aspectRatio,
+        prompt: prompt,
+      };
+
+      mediaItems.unshift(newMediaItem);
+      await fs.writeFile(mediaFilePath, JSON.stringify(mediaItems, null, 2));
+    }
+
     return NextResponse.json(result, {
       status: "image" in result ? 200 : 500,
     });

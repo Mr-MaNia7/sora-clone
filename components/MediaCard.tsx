@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRef, useState } from "react";
-import type { AspectRatio } from "@/lib/mock-data";
+import type { AspectRatio } from "@/lib/api-types";
 import { motion } from "framer-motion";
 
 interface MediaCardProps {
