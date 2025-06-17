@@ -17,22 +17,66 @@ import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { SkeletonCard } from "./SkeletonCard";
 import { motion } from "framer-motion";
+import { useInView } from "react-intersection-observer";
+import React from "react";
 
 interface FetchMediaResponse {
   data: MediaItem[];
   nextPage: number | undefined;
 }
 
-const fetchMedia = async ({ pageParam = 0 }: { pageParam: number }): Promise<FetchMediaResponse> => {
+type PageType = 'explore' | 'images' | 'videos';
+
+interface HomePageProps {
+  suggestions: Suggestion[];
+  pageType?: PageType;
+  pageTitle?: string;
+  defaultAspectRatio?: AspectRatio | "all";
+  mediaType?: 'image' | 'video' | 'all';
+}
+
+const MemoizedMediaCard = React.memo(({ item, handleCardClick, layoutMasonry }: { item: MediaItem, handleCardClick: (item: MediaItem) => void, layoutMasonry: () => void }) => {
+  const { ref, inView } = useInView({
+    triggerOnce: false,
+    threshold: 0.5,
+  });
+
+  return (
+    <motion.div
+      ref={ref}
+      key={item.id}
+      onClick={() => handleCardClick(item)}
+      variants={{ hidden: { opacity: 0, y: 50 }, show: { opacity: 1, y: 0 } }}
+      className="w-full"
+    >
+      <MediaCard {...item} onLoad={layoutMasonry} isInView={inView} />
+    </motion.div>
+  );
+});
+
+const fetchMedia = async ({ 
+  pageParam = 0, 
+  mediaType = 'all' 
+}: { 
+  pageParam: number;
+  mediaType?: 'image' | 'video' | 'all';
+}): Promise<FetchMediaResponse> => {
   const pageSize = 8;
-  const response = await fetch(`/api/media?page=${pageParam}&pageSize=${pageSize}`);
+  const typeParam = mediaType !== 'all' ? `&type=${mediaType}` : '';
+  const response = await fetch(`/api/media?page=${pageParam}&pageSize=${pageSize}${typeParam}`);
   if (!response.ok) {
     throw new Error('Failed to fetch media');
   }
   return response.json();
 };
 
-export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
+export function HomePage({ 
+  suggestions, 
+  pageType = 'explore',
+  pageTitle = 'Explore',
+  defaultAspectRatio = 'all',
+  mediaType = 'all'
+}: HomePageProps) {
   const {
     images: generatedImages,
     isLoading: isGenerating,
@@ -43,8 +87,9 @@ export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
   
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [viewAspectRatio, setViewAspectRatio] = useState<AspectRatio | "all">("all");
+  const [viewAspectRatio, setViewAspectRatio] = useState<AspectRatio | "all">(defaultAspectRatio);
   const masonryRef = useRef<HTMLDivElement>(null);
+  const [generationCount, setGenerationCount] = useState(1);
   
   const {
     data,
@@ -54,8 +99,8 @@ export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
     isPending: isInitialLoading,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ["media"],
-    queryFn: fetchMedia,
+    queryKey: ["media", mediaType],
+    queryFn: ({ pageParam = 0 }) => fetchMedia({ pageParam, mediaType }),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextPage,
   });
@@ -117,15 +162,16 @@ export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
 
   useEffect(() => {
     if (generatedImages.length > 0 && !isGenerating) {
-      queryClient.invalidateQueries({ queryKey: ['media'] });
+      queryClient.invalidateQueries({ queryKey: ['media', mediaType] });
     }
-  }, [generatedImages, isGenerating, queryClient]);
+  }, [generatedImages, isGenerating, queryClient, mediaType]);
 
   const [selectedModels, setSelectedModels] = useState<
     Record<ProviderKey, string>
   >(MODEL_CONFIGS.performance);
 
-  const handlePromptSubmit = (newPrompt: string, aspectRatio: AspectRatio) => {
+  const handlePromptSubmit = (newPrompt: string, aspectRatio: AspectRatio, variations: number) => {
+    setGenerationCount(variations);
     const activeProviders: ProviderKey[] = ['vertex']; // Using only one provider
     const providerToModel = {
       replicate: selectedModels.replicate,
@@ -156,14 +202,23 @@ export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
     return () => window.removeEventListener('resize', handleResize);
   }, [layoutMasonry]);
 
+  // Reset aspect ratio when page type changes
+  useEffect(() => {
+    if (pageType !== 'explore' && defaultAspectRatio !== 'all') {
+      setViewAspectRatio(defaultAspectRatio);
+    }
+  }, [pageType, defaultAspectRatio]);
+
   return (
     <div className="flex h-screen bg-black text-white">
       <Sidebar />
       <main className="flex-1 flex flex-col overflow-y-auto">
         <header className="sticky top-0 z-10 bg-black/80 backdrop-blur-sm border-b border-gray-800 flex items-center justify-between p-4">
-          <h1 className="text-2xl font-bold">Explore</h1>
+          <h1 className="text-2xl font-bold">{pageTitle}</h1>
           <div className="flex items-center space-x-2">
-             <Button variant={viewAspectRatio === 'all' ? "secondary" : "ghost"} onClick={() => setViewAspectRatio('all')}>All</Button>
+             {pageType === 'explore' && (
+               <Button variant={viewAspectRatio === 'all' ? "secondary" : "ghost"} onClick={() => setViewAspectRatio('all')}>All</Button>
+             )}
              <Button variant={viewAspectRatio === '9:16' ? "secondary" : "ghost"} size="icon" onClick={() => setViewAspectRatio('9:16')}><Smartphone/></Button>
              <Button variant={viewAspectRatio === '1:1' ? "secondary" : "ghost"} size="icon" onClick={() => setViewAspectRatio('1:1')}><Square/></Button>
              <Button variant={viewAspectRatio === '16:9' ? "secondary" : "ghost"} size="icon" onClick={() => setViewAspectRatio('16:9')}><RectangleHorizontal/></Button>
@@ -189,11 +244,6 @@ export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
             </div>
           ) : (
           <>
-            {(isGenerating) && (
-              <div className="flex justify-center items-center h-full">
-                <div className="text-white">Generating...</div>
-              </div>
-            )}
             <motion.div 
               ref={masonryRef} 
               className="relative w-full"
@@ -209,27 +259,32 @@ export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
               initial="hidden"
               animate="show"
             >
+              {isGenerating &&
+                Array.from({ length: generationCount }).map((_, i) => (
+                  <SkeletonCard
+                    key={`generating-${i}`}
+                    aspectRatio={generationAspectRatio || "9:16"}
+                  />
+                ))}
               {filteredMediaItems.map((item, index) => {
                  if (filteredMediaItems.length === index + 1) {
                   return (
-                    <motion.div 
-                      ref={lastItemRef} 
-                      key={item.id} 
-                      onClick={() => handleCardClick(item)}
-                      variants={{ hidden: { opacity: 0, y: 50 }, show: { opacity: 1, y: 0 } }}
-                    >
-                      <MediaCard {...item} onLoad={layoutMasonry} />
-                    </motion.div>
+                    <div ref={lastItemRef} key={item.id} className="w-full">
+                      <MemoizedMediaCard 
+                        item={item} 
+                        handleCardClick={handleCardClick}
+                        layoutMasonry={layoutMasonry} 
+                      />
+                    </div>
                   );
                 }
                 return (
-                  <motion.div 
-                    key={item.id} 
-                    onClick={() => handleCardClick(item)}
-                    variants={{ hidden: { opacity: 0, y: 50 }, show: { opacity: 1, y: 0 } }}
-                  >
-                    <MediaCard {...item} onLoad={layoutMasonry} />
-                  </motion.div>
+                  <MemoizedMediaCard 
+                    key={item.id}
+                    item={item}
+                    handleCardClick={handleCardClick}
+                    layoutMasonry={layoutMasonry} 
+                  />
                 )
               })}
             </motion.div>
@@ -245,6 +300,7 @@ export function HomePage({ suggestions }: { suggestions: Suggestion[] }) {
           onSubmit={handlePromptSubmit}
           isLoading={isGenerating}
           suggestions={suggestions}
+          defaultMediaType={mediaType === 'video' ? 'Video' : 'Image'}
         />
       </main>
     </div>

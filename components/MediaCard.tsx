@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import type { AspectRatio } from "@/lib/api-types";
 import { motion } from "framer-motion";
 
@@ -16,6 +16,7 @@ interface MediaCardProps {
   aspectRatio: AspectRatio;
   thumbnail?: string;
   onLoad?: () => void;
+  isInView?: boolean;
 }
 
 export function MediaCard({
@@ -27,30 +28,24 @@ export function MediaCard({
   aspectRatio,
   thumbnail,
   onLoad,
+  isInView,
 }: MediaCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isHovered, setIsHovered] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const handleMouseEnter = async () => {
-    setIsHovered(true);
+  useEffect(() => {
     if (type === "video" && videoRef.current) {
-      try {
-        await videoRef.current.play();
-      } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          console.error("Video play error:", error);
-        }
+      if (isInView) {
+        videoRef.current.play().catch((error) => {
+          if ((error as Error).name !== "AbortError") {
+            console.error("Video play error:", error);
+          }
+        });
+      } else {
+        videoRef.current.pause();
       }
     }
-  };
-
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    if (type === "video" && videoRef.current) {
-      videoRef.current.pause();
-    }
-  };
+  }, [isInView, type]);
 
   const handleLoad = () => {
     setIsLoaded(true);
@@ -63,8 +58,6 @@ export function MediaCard({
     "9:16": "aspect-[9/16]",
   };
 
-  const showVideo = isHovered && type === "video";
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -74,8 +67,6 @@ export function MediaCard({
         "relative group",
         aspectRatioClasses[aspectRatio],
       )}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       {type === "image" && (
         <Image
@@ -93,7 +84,7 @@ export function MediaCard({
           fill
           className={cn(
             "object-cover w-full h-full rounded-lg transition-opacity",
-            showVideo ? "opacity-0" : "opacity-100"
+            isInView ? "opacity-0" : "opacity-100"
           )}
           onLoad={handleLoad}
         />
@@ -107,14 +98,13 @@ export function MediaCard({
           playsInline
           className={cn(
             "object-cover w-full h-full rounded-lg transition-opacity",
-            showVideo ? "opacity-100" : "opacity-0"
+            isInView ? "opacity-100" : "opacity-0"
           )}
         />
       )}
       <div
         className={cn(
-          "absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent transition-opacity",
-          isHovered ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          "absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"
         )}
       >
         <div className="flex items-center justify-between text-white">

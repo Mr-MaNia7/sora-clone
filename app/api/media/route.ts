@@ -38,15 +38,22 @@ export async function GET(request: Request) {
 
     const page = parseInt(searchParams.get("page") || "0", 10);
     const pageSize = parseInt(searchParams.get("pageSize") || "8", 10);
+    const typeFilter = searchParams.get("type");
+
+    // Filter by media type if specified
+    let filteredMedia = allMedia;
+    if (typeFilter && (typeFilter === "image" || typeFilter === "video")) {
+      filteredMedia = allMedia.filter((item) => item.type === typeFilter);
+    }
 
     const startIndex = page * pageSize;
     const endIndex = startIndex + pageSize;
 
-    const paginatedMedia = allMedia.slice(startIndex, endIndex);
+    const paginatedMedia = filteredMedia.slice(startIndex, endIndex);
 
     return NextResponse.json({
       data: paginatedMedia,
-      nextPage: endIndex < allMedia.length ? page + 1 : undefined,
+      nextPage: endIndex < filteredMedia.length ? page + 1 : undefined,
     });
   } catch (error) {
     console.error("Failed to fetch media:", error);

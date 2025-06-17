@@ -21,6 +21,7 @@ import {
   Video,
   Image,
   Copy,
+  Loader2,
 } from "lucide-react";
 import { Suggestion } from "@/lib/suggestions";
 import { useState } from "react";
@@ -41,17 +42,18 @@ const mediaTypes: { type: MediaType; icon: React.ReactNode }[] = [
 ];
 
 const variationOptions: { count: VariationCount; icon: React.ReactNode; label: string }[] = [
-    { count: 4, icon: <Grip size={16} />, label: "4 images" },
-    { count: 2, icon: <Copy size={16} />, label: "2 images" },
-    { count: 1, icon: <Square size={16} />, label: "1 image" },
+  { count: 1, icon: <Square size={16} />, label: "1 image" },
+  { count: 2, icon: <Copy size={16} />, label: "2 images" },
+  { count: 4, icon: <Grip size={16} />, label: "4 images" },
 ];
 
 interface PromptBarProps {
-  onSubmit: (prompt: string, aspectRatio: AspectRatio) => void;
+  onSubmit: (prompt: string, aspectRatio: AspectRatio, variations: VariationCount) => void;
   isLoading: boolean;
   suggestions: Suggestion[];
   initialPrompt?: string;
   placeholder?: string;
+  defaultMediaType?: MediaType;
 }
 
 export function PromptBar({
@@ -60,18 +62,19 @@ export function PromptBar({
   suggestions,
   initialPrompt = "",
   placeholder = "Describe your image...",
+  defaultMediaType = "Image",
 }: PromptBarProps) {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [isFocused, setIsFocused] = useState(false);
   const [selectedAspectRatio, setSelectedAspectRatio] =
     useState<AspectRatio>("9:16");
-  const [mediaType, setMediaType] = useState<MediaType>("Image");
-  const [variations, setVariations] = useState<VariationCount>(4);
+  const [mediaType, setMediaType] = useState<MediaType>(defaultMediaType);
+  const [variations, setVariations] = useState<VariationCount>(1);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (prompt.trim()) {
-      onSubmit(prompt, selectedAspectRatio);
+      onSubmit(prompt, selectedAspectRatio, variations);
       setPrompt("");
     }
   };
@@ -97,12 +100,12 @@ export function PromptBar({
               {suggestions.map((s) => (
                 <li key={s.prompt}>
                   <Button
-                    variant="secondary"
+                    variant="ghost"
                     className="bg-neutral-700/80 rounded-lg text-white"
                     onClick={() => {
                       const newPrompt = s.prompt;
                       setPrompt(newPrompt);
-                      onSubmit(newPrompt, selectedAspectRatio);
+                      onSubmit(newPrompt, selectedAspectRatio, variations);
                       setIsFocused(false);
                     }}
                   >
@@ -117,172 +120,182 @@ export function PromptBar({
           onSubmit={handleFormSubmit}
           className="bg-neutral-800/80 backdrop-blur-lg rounded-full p-2 flex items-center gap-1 text-white"
         >
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full hover:bg-neutral-700/80"
-              >
-                <Plus />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-60 bg-neutral-800 border-neutral-700 text-white rounded-xl">
-              Upload Image or Video
-            </PopoverContent>
-          </Popover>
+          <fieldset disabled={isLoading} className="contents">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full hover:bg-neutral-700/80"
+                >
+                  <Plus />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60 bg-neutral-800 border-neutral-700 text-white rounded-xl">
+                Upload Image or Video
+              </PopoverContent>
+            </Popover>
 
-          <Input
-            placeholder={placeholder}
-            className="flex-1 bg-transparent border-0 focus:ring-0 placeholder:text-neutral-400"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-            disabled={isLoading}
-          />
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="secondary"
-                className="rounded-full bg-neutral-700/80 hover:bg-neutral-600/80 gap-1.5 h-9 px-3"
-              >
-                {selectedMediaTypeData?.icon}
-                <span className="text-sm">{mediaType}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-60 bg-neutral-800 border-neutral-700 text-white rounded-xl">
-               <div className="space-y-2">
-                <h4 className="font-medium leading-none">Type</h4>
-                <div className="space-y-1">
-                   {mediaTypes.map(({ type, icon }) => (
-                     <Button
-                      key={type}
-                      variant="ghost"
-                      className={`w-full justify-between hover:bg-neutral-700/80 ${
-                        mediaType === type && "bg-neutral-700"
-                      }`}
-                      onClick={() => setMediaType(type)}
-                    >
-                      <div className="flex items-center gap-2">
-                        {icon}
-                        <span>{type}</span>
-                      </div>
-                      {mediaType === type && <Check size={16} />}
-                    </Button>
-                   ))}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="secondary"
-                className="rounded-full bg-neutral-700/80 hover:bg-neutral-600/80 gap-1.5 h-9 px-3"
-              >
-                {selectedRatioData?.icon}
-                <span className="text-sm">{selectedAspectRatio}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-60 bg-neutral-800 border-neutral-700 text-white rounded-xl">
-              <div className="space-y-2">
-                <h4 className="font-medium leading-none">Aspect ratio</h4>
-                <div className="space-y-1">
-                  {aspectRatios.map(({ ratio, icon }) => (
-                    <Button
-                      key={ratio}
-                      variant="ghost"
-                      className={`w-full justify-between hover:bg-neutral-700/80 ${
-                        selectedAspectRatio === ratio && "bg-neutral-700"
-                      }`}
-                      onClick={() => setSelectedAspectRatio(ratio)}
-                    >
-                      <div className="flex items-center gap-2">
-                        {icon}
-                        <span>{ratio}</span>
-                      </div>
-                      {selectedAspectRatio === ratio && <Check size={16} />}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="secondary"
-                className="rounded-full bg-neutral-700/80 hover:bg-neutral-600/80 gap-1.5 h-9 px-3"
-              >
-                {selectedVariationData?.icon}
-                <span className="text-sm">{variations}v</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-60 bg-neutral-800 border-neutral-700 text-white rounded-xl">
-               <div className="space-y-2">
-                <h4 className="font-medium leading-none">Variations</h4>
-                <div className="space-y-1">
-                   {variationOptions.map(({ count, icon, label }) => (
-                    <Button
-                      key={count}
-                      variant="ghost"
-                      className={`w-full justify-between hover:bg-neutral-700/80 ${
-                        variations === count && "bg-neutral-700"
-                      }`}
-                      onClick={() => setVariations(count)}
-                    >
-                      <div className="flex items-center gap-2">
-                        {icon}
-                        <span>{label}</span>
-                      </div>
-                      {variations === count && <Check size={16} />}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="rounded-full bg-neutral-700/80 hover:bg-neutral-600/80 h-9 w-9"
-              >
-                <SlidersHorizontal size={16} />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 bg-neutral-800 border-neutral-700 text-white rounded-xl">
-               <div className="space-y-4">
-                  <h4 className="font-medium leading-none">Advanced Settings</h4>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none">Negative prompt</label>
-                    <Input className="bg-neutral-700/80 border-neutral-600" placeholder="e.g., ugly, blurry, deformed" />
+            <Input
+              placeholder={placeholder}
+              className="flex-1 bg-transparent border-0 focus:ring-0 placeholder:text-neutral-400"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="default"
+                  className="rounded-full bg-neutral-700/80 hover:bg-neutral-600/80 gap-1.5 h-9 px-3"
+                >
+                  {selectedMediaTypeData?.icon}
+                  <span className="text-sm">{mediaType}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60 bg-neutral-800 border-neutral-700 text-white rounded-xl">
+                <div className="space-y-2">
+                  <h4 className="font-medium leading-none">Type</h4>
+                  <div className="space-y-1">
+                    {mediaTypes.map(({ type, icon }) => (
+                      <Button
+                        key={type}
+                        variant="ghost"
+                        className={`w-full justify-between hover:bg-neutral-700/80 ${
+                          mediaType === type && "bg-neutral-700"
+                        }`}
+                        onClick={() => setMediaType(type)}
+                      >
+                        <div className="flex items-center gap-2">
+                          {icon}
+                          <span>{type}</span>
+                        </div>
+                        {mediaType === type && <Check size={16} />}
+                      </Button>
+                    ))}
                   </div>
-                   <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none">Style</label>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="rounded-full bg-neutral-700/80 hover:bg-neutral-600/80 gap-1.5 h-9 px-3"
+                >
+                  {selectedRatioData?.icon}
+                  <span className="text-sm">{selectedAspectRatio}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60 bg-neutral-800 border-neutral-700 text-white rounded-xl">
+                <div className="space-y-2">
+                  <h4 className="font-medium leading-none">Aspect ratio</h4>
+                  <div className="space-y-1">
+                    {aspectRatios.map(({ ratio, icon }) => (
+                      <Button
+                        key={ratio}
+                        variant="ghost"
+                        className={`w-full justify-between hover:bg-neutral-700/80 ${
+                          selectedAspectRatio === ratio && "bg-neutral-700"
+                        }`}
+                        onClick={() => setSelectedAspectRatio(ratio)}
+                      >
+                        <div className="flex items-center gap-2">
+                          {icon}
+                          <span>{ratio}</span>
+                        </div>
+                        {selectedAspectRatio === ratio && <Check size={16} />}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="rounded-full bg-neutral-700/80 hover:bg-neutral-600/80 gap-1.5 h-9 px-3"
+                >
+                  {selectedVariationData?.icon}
+                  <span className="text-sm">{variations}v</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60 bg-neutral-800 border-neutral-700 text-white rounded-xl">
+                <div className="space-y-2">
+                  <h4 className="font-medium leading-none">Variations</h4>
+                  <div className="space-y-1">
+                    {variationOptions.map(({ count, icon, label }) => (
+                      <Button
+                        key={count}
+                        variant="ghost"
+                        className={`w-full justify-between hover:bg-neutral-700/80 ${
+                          variations === count && "bg-neutral-700"
+                        }`}
+                        onClick={() => setVariations(count)}
+                      >
+                        <div className="flex items-center gap-2">
+                          {icon}
+                          <span>{label}</span>
+                        </div>
+                        {variations === count && <Check size={16} />}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full bg-neutral-700/80 hover:bg-neutral-600/80 h-9 w-9"
+                >
+                  <SlidersHorizontal size={16} />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 bg-neutral-800 border-neutral-700 text-white rounded-xl">
+                <div className="space-y-4">
+                  <h4 className="font-medium leading-none">
+                    Advanced Settings
+                  </h4>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none">
+                      Negative prompt
+                    </label>
+                    <Input
+                      className="bg-neutral-700/80 border-neutral-600"
+                      placeholder="e.g., ugly, blurry, deformed"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none">
+                      Style
+                    </label>
                     {/* This would be a dropdown or select */}
                     <p className="text-sm text-neutral-400">Photorealistic</p>
                   </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="rounded-full bg-neutral-700/80 hover:bg-neutral-600/80 h-9 w-9"
-              >
-                <HelpCircle size={16} />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-60 bg-neutral-800 border-neutral-700 text-white rounded-xl">
-              Help
-            </PopoverContent>
-          </Popover>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full bg-neutral-700/80 hover:bg-neutral-600/80 h-9 w-9"
+                >
+                  <HelpCircle size={16} />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60 bg-neutral-800 border-neutral-700 text-white rounded-xl">
+                Help
+              </PopoverContent>
+            </Popover>
+          </fieldset>
 
           <Button
             size="icon"
@@ -290,7 +303,11 @@ export function PromptBar({
             type="submit"
             disabled={isLoading}
           >
-            {isLoading ? "..." : <ArrowUp size={16} />}
+            {isLoading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <ArrowUp size={16} />
+            )}
           </Button>
         </form>
       </div>

@@ -64,6 +64,7 @@ export function Editor({ item }: EditorProps) {
                       : "Type your prompt here..."
                   }
                   suggestions={[]}
+                  defaultMediaType={item.type === "video" ? "Video" : "Image"}
                 />
               </div>
               <Button
